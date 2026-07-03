@@ -195,3 +195,33 @@ The layer may define:
 
 In v0.2, route authorization is still conservative.  
 The agent may recommend and record routes, but sensitive downstream actions remain blocked unless review conditions are satisfied.
+
+### Reviewer Notification Layer
+
+The Reviewer Notification Layer records who should review a blocked, conditional, or sensitive route.
+
+It prevents an AI agent from silently stopping a route without producing a useful human-review trail.
+
+The layer may define:
+
+- notification ID
+- notification status
+- notification mode
+- review requests
+- reviewer roles
+- review reasons
+- priority
+- related routes
+- related blocking conditions
+- requested decisions
+- notification channel
+- safe notification payload
+- blocked payload items
+- request status
+
+This layer is intentionally careful about payload safety.
+
+A reviewer notification should not automatically include private conversation excerpts, unredacted evidence, sensitive identity information, external settlement details, or unverified origin claims.
+
+In v0.3, the agent may prepare review notifications and request human review.  
+It may not notify external systems with sensitive payloads unless the required review conditions are satisfied.
