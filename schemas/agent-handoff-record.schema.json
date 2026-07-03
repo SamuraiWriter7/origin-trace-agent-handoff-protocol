@@ -14,6 +14,7 @@
     "intake",
     "gate_check",
     "routing",
+    "route_authorization",
     "action_policy",
     "handoff_result"
   ],
@@ -21,7 +22,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "0.1.0"
+      "const": "0.2.0"
     },
     "record_type": {
       "type": "string",
@@ -371,6 +372,212 @@
           }
         },
         "routing_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "route_authorization": {
+      "type": "object",
+      "required": [
+        "authorization_id",
+        "authorization_status",
+        "authorization_mode",
+        "authorization_records",
+        "authorization_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "pattern": "^route_auth_[A-Za-z0-9._-]+$"
+        },
+        "authorization_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "candidate_only",
+            "partially_authorized",
+            "authorized",
+            "blocked",
+            "requires_human_review"
+          ]
+        },
+        "authorization_mode": {
+          "type": "string",
+          "enum": [
+            "record_only",
+            "recommendation_only",
+            "manual_approval_required",
+            "gate_pass_required",
+            "mixed"
+          ]
+        },
+        "authorization_records": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "route_id",
+              "target_id",
+              "target_protocol",
+              "target_purpose",
+              "authorization_decision",
+              "gate_dependency",
+              "permitted_route_actions",
+              "blocked_route_actions",
+              "authorization_rationale"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "route_id": {
+                "type": "string",
+                "pattern": "^route_[A-Za-z0-9._-]+$"
+              },
+              "target_id": {
+                "type": "string",
+                "pattern": "^target_[A-Za-z0-9._-]+$"
+              },
+              "target_protocol": {
+                "type": "string",
+                "enum": [
+                  "synchronization-audit-protocol",
+                  "origin-structure-market",
+                  "origin-license-policy-registry",
+                  "compute-access-royalty-os",
+                  "royalty-os",
+                  "multi-wing-orchestration-generator",
+                  "external_registry",
+                  "other"
+                ]
+              },
+              "target_purpose": {
+                "type": "string",
+                "enum": [
+                  "audit",
+                  "licensing",
+                  "market_registration",
+                  "royalty_review",
+                  "archival",
+                  "orchestration",
+                  "other"
+                ]
+              },
+              "authorization_decision": {
+                "type": "string",
+                "enum": [
+                  "authorized",
+                  "conditionally_authorized",
+                  "manual_review_required",
+                  "blocked",
+                  "not_applicable"
+                ]
+              },
+              "gate_dependency": {
+                "type": "object",
+                "required": [
+                  "requires_human_gate_pass",
+                  "accepted_gate_statuses",
+                  "required_decision_statuses"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "requires_human_gate_pass": {
+                    "type": "boolean"
+                  },
+                  "accepted_gate_statuses": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "not_required",
+                        "required",
+                        "pending",
+                        "passed",
+                        "rejected",
+                        "blocked",
+                        "unknown"
+                      ]
+                    }
+                  },
+                  "required_decision_statuses": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "not_started",
+                        "pending",
+                        "approved",
+                        "approved_with_conditions",
+                        "rejected",
+                        "blocked",
+                        "unknown"
+                      ]
+                    }
+                  }
+                }
+              },
+              "permitted_route_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "send_to_audit_queue",
+                    "send_to_human_review_queue",
+                    "create_review_ticket",
+                    "emit_recommendation",
+                    "archive_record",
+                    "notify_reviewer",
+                    "other"
+                  ]
+                }
+              },
+              "blocked_route_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "register_market_asset",
+                    "publish_license",
+                    "execute_royalty",
+                    "execute_external_settlement",
+                    "approve_training_use",
+                    "make_public_origin_claim",
+                    "auto_forward_external",
+                    "other"
+                  ]
+                }
+              },
+              "authorization_conditions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "condition_id",
+                    "condition_summary"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "condition_id": {
+                      "type": "string",
+                      "pattern": "^auth_condition_[A-Za-z0-9._-]+$"
+                    },
+                    "condition_summary": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              "authorization_rationale": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "authorization_summary": {
           "type": "string",
           "minLength": 1
         }
