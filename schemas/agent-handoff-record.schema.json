@@ -15,6 +15,7 @@
     "gate_check",
     "routing",
     "route_authorization",
+    "reviewer_notification",
     "action_policy",
     "handoff_result"
   ],
@@ -583,6 +584,221 @@
         }
       }
     },
+    "reviewer_notification": {
+      "type": "object",
+      "required": [
+        "notification_id",
+        "notification_status",
+        "notification_mode",
+        "review_requests",
+        "notification_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "notification_id": {
+          "type": "string",
+          "pattern": "^review_notify_[A-Za-z0-9._-]+$"
+        },
+        "notification_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "prepared",
+            "queued",
+            "sent",
+            "deferred",
+            "blocked",
+            "not_required"
+          ]
+        },
+        "notification_mode": {
+          "type": "string",
+          "enum": [
+            "record_only",
+            "recommendation_only",
+            "manual_send_required",
+            "agent_may_notify",
+            "external_system",
+            "mixed"
+          ]
+        },
+        "review_requests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "request_id",
+              "reviewer_role",
+              "review_reason",
+              "priority",
+              "related_routes",
+              "requested_decision",
+              "safe_notification_payload",
+              "blocked_payload_items",
+              "request_status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "request_id": {
+                "type": "string",
+                "pattern": "^review_request_[A-Za-z0-9._-]+$"
+              },
+              "reviewer_role": {
+                "type": "string",
+                "enum": [
+                  "originator",
+                  "maintainer",
+                  "auditor",
+                  "legal_reviewer",
+                  "market_operator",
+                  "royalty_operator",
+                  "human_gatekeeper",
+                  "multi_party_review",
+                  "other"
+                ]
+              },
+              "review_reason": {
+                "type": "string",
+                "enum": [
+                  "human_gate_pending",
+                  "blocked_route",
+                  "conditional_route",
+                  "missing_recipient_identity",
+                  "license_policy_review",
+                  "market_registration_review",
+                  "royalty_execution_review",
+                  "training_use_review",
+                  "conflicting_claims",
+                  "low_evidence_confidence",
+                  "custom_policy",
+                  "other"
+                ]
+              },
+              "priority": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ]
+              },
+              "related_routes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^route_[A-Za-z0-9._-]+$"
+                }
+              },
+              "related_blocking_conditions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "requested_decision": {
+                "type": "string",
+                "enum": [
+                  "approve",
+                  "approve_with_conditions",
+                  "reject",
+                  "block",
+                  "request_more_evidence",
+                  "assign_reviewer",
+                  "other"
+                ]
+              },
+              "notification_channel": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "issue",
+                  "pull_request_comment",
+                  "email",
+                  "dashboard",
+                  "webhook",
+                  "manual",
+                  "other"
+                ]
+              },
+              "safe_notification_payload": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "summary",
+                  "included_fields"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "included_fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "source_receipt_id",
+                        "receipt_schema_version",
+                        "gate_status",
+                        "decision_status",
+                        "blocked_actions",
+                        "candidate_targets",
+                        "authorization_summary",
+                        "routing_summary",
+                        "evidence_summary",
+                        "diff_summary",
+                        "boundary_summary",
+                        "other"
+                      ]
+                    }
+                  }
+                }
+              },
+              "blocked_payload_items": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "private_conversation_excerpt",
+                    "unredacted_evidence",
+                    "sensitive_identity",
+                    "external_settlement_details",
+                    "unverified_origin_claim",
+                    "confidential_repository_url",
+                    "other"
+                  ]
+                }
+              },
+              "request_status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "ready",
+                  "sent",
+                  "deferred",
+                  "blocked",
+                  "resolved"
+                ]
+              },
+              "request_notes": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "notification_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "action_policy": {
       "type": "object",
       "required": [
@@ -614,6 +830,9 @@
               "recommend_targets",
               "emit_handoff_record",
               "notify_human_reviewer",
+              "create_review_notification",
+              "prepare_safe_payload",
+              "request_human_review",
               "other"
             ]
           }
@@ -630,6 +849,8 @@
               "make_public_origin_claim",
               "bypass_human_review_gate",
               "auto_forward_to_external_system",
+              "send_unredacted_private_evidence",
+              "notify_external_system_without_review",
               "other"
             ]
           }
