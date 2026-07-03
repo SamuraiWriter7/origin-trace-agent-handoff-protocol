@@ -16,6 +16,7 @@
     "routing",
     "route_authorization",
     "reviewer_notification",
+    "handoff_receipt_emission",
     "action_policy",
     "handoff_result"
   ],
@@ -23,7 +24,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "0.3.0"
+      "const": "0.4.0"
     },
     "record_type": {
       "type": "string",
@@ -799,6 +800,249 @@
         }
       }
     },
+    "handoff_receipt_emission": {
+      "type": "object",
+      "required": [
+        "emission_id",
+        "emission_status",
+        "emission_mode",
+        "emitted_receipts",
+        "emission_policy",
+        "emission_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "emission_id": {
+          "type": "string",
+          "pattern": "^handoff_emission_[A-Za-z0-9._-]+$"
+        },
+        "emission_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "prepared",
+            "emitted",
+            "deferred",
+            "blocked",
+            "not_required"
+          ]
+        },
+        "emission_mode": {
+          "type": "string",
+          "enum": [
+            "record_only",
+            "recommendation_only",
+            "manual_emit_required",
+            "agent_may_emit_internal",
+            "external_system",
+            "mixed"
+          ]
+        },
+        "emitted_receipts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "emitted_receipt_id",
+              "receipt_type",
+              "target_protocol",
+              "target_purpose",
+              "related_route_id",
+              "emission_decision",
+              "payload_scope",
+              "review_dependency",
+              "emission_rationale"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "emitted_receipt_id": {
+                "type": "string",
+                "pattern": "^emitted_receipt_[A-Za-z0-9._-]+$"
+              },
+              "receipt_type": {
+                "type": "string",
+                "enum": [
+                  "audit_handoff_receipt",
+                  "review_request_receipt",
+                  "royalty_review_receipt",
+                  "license_review_receipt",
+                  "market_review_receipt",
+                  "archive_receipt",
+                  "blocked_route_receipt",
+                  "other"
+                ]
+              },
+              "target_protocol": {
+                "type": "string",
+                "enum": [
+                  "synchronization-audit-protocol",
+                  "origin-structure-market",
+                  "origin-license-policy-registry",
+                  "compute-access-royalty-os",
+                  "royalty-os",
+                  "multi-wing-orchestration-generator",
+                  "external_registry",
+                  "other"
+                ]
+              },
+              "target_purpose": {
+                "type": "string",
+                "enum": [
+                  "audit",
+                  "review",
+                  "licensing",
+                  "market_registration_review",
+                  "royalty_review",
+                  "archival",
+                  "orchestration",
+                  "blocked_route_record",
+                  "other"
+                ]
+              },
+              "related_route_id": {
+                "type": "string",
+                "pattern": "^route_[A-Za-z0-9._-]+$"
+              },
+              "related_review_request_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^review_request_[A-Za-z0-9._-]+$"
+                }
+              },
+              "emission_decision": {
+                "type": "string",
+                "enum": [
+                  "emit_internal",
+                  "prepare_for_manual_emit",
+                  "defer",
+                  "block",
+                  "not_applicable"
+                ]
+              },
+              "payload_scope": {
+                "type": "object",
+                "required": [
+                  "included_fields",
+                  "excluded_fields",
+                  "redaction_required"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "included_fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "source_receipt_id",
+                        "receipt_schema_version",
+                        "agent_context",
+                        "gate_status",
+                        "decision_status",
+                        "routing_summary",
+                        "authorization_summary",
+                        "notification_summary",
+                        "blocked_actions",
+                        "permitted_actions",
+                        "candidate_targets",
+                        "selected_targets",
+                        "safe_notification_payload",
+                        "other"
+                      ]
+                    }
+                  },
+                  "excluded_fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "private_conversation_excerpt",
+                        "unredacted_evidence",
+                        "sensitive_identity",
+                        "external_settlement_details",
+                        "unverified_origin_claim",
+                        "confidential_repository_url",
+                        "other"
+                      ]
+                    }
+                  },
+                  "redaction_required": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "review_dependency": {
+                "type": "object",
+                "required": [
+                  "requires_human_review",
+                  "requires_gate_pass",
+                  "allowed_before_gate_pass"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "requires_human_review": {
+                    "type": "boolean"
+                  },
+                  "requires_gate_pass": {
+                    "type": "boolean"
+                  },
+                  "allowed_before_gate_pass": {
+                    "type": "boolean"
+                  },
+                  "dependency_notes": {
+                    "type": "string"
+                  }
+                }
+              },
+              "emission_reference": {
+                "type": "string"
+              },
+              "emission_rationale": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "emission_policy": {
+          "type": "object",
+          "required": [
+            "default_emission_mode",
+            "external_emission_allowed",
+            "requires_safe_payload",
+            "policy_notes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "default_emission_mode": {
+              "type": "string",
+              "enum": [
+                "record_only",
+                "recommendation_only",
+                "manual_emit_required",
+                "internal_emit_allowed",
+                "external_emit_allowed"
+              ]
+            },
+            "external_emission_allowed": {
+              "type": "boolean"
+            },
+            "requires_safe_payload": {
+              "type": "boolean"
+            },
+            "policy_notes": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "emission_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "action_policy": {
       "type": "object",
       "required": [
@@ -833,6 +1077,9 @@
               "create_review_notification",
               "prepare_safe_payload",
               "request_human_review",
+              "create_handoff_receipt",
+              "prepare_downstream_receipt",
+              "emit_internal_handoff_receipt",
               "other"
             ]
           }
@@ -851,6 +1098,8 @@
               "auto_forward_to_external_system",
               "send_unredacted_private_evidence",
               "notify_external_system_without_review",
+              "emit_external_handoff_without_review",
+              "emit_receipt_with_unredacted_payload",
               "other"
             ]
           }
