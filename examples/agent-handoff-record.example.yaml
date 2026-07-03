@@ -1,7 +1,7 @@
-schema_version: "0.3.0"
+schema_version: "0.4.0"
 record_type: origin_trace_agent_handoff
-handoff_id: agent_handoff_2026-07-03-reviewer-notification-v0.3
-created_at: "2026-07-03T01:50:00Z"
+handoff_id: agent_handoff_2026-07-03-handoff-receipt-emission-v0.4
+created_at: "2026-07-03T02:15:00Z"
 
 source_receipt:
   receipt_id: otr_2026-07-03-human-review-gate-v0.5
@@ -10,12 +10,12 @@ source_receipt:
   receipt_status: draft
 
 agent_context:
-  agent_id: agent_origin_trace_router_v0.3
+  agent_id: agent_origin_trace_router_v0.4
   agent_type: routing_agent
   agent_role: >-
     Reads an Origin Trace Receipt, checks the Human Review Gate, authorizes
-    safe downstream routes, prepares reviewer notifications, and records
-    routing recommendations.
+    safe downstream routes, prepares reviewer notifications, prepares safe
+    downstream handoff receipts, and records routing recommendations.
   autonomy_level: recommendation_only
 
 intake:
@@ -135,7 +135,7 @@ routing:
     remain blocked until human review is completed.
 
 route_authorization:
-  authorization_id: route_auth_origin_trace_receipt_v0.3
+  authorization_id: route_auth_origin_trace_receipt_v0.4
   authorization_status: partially_authorized
   authorization_mode: mixed
 
@@ -268,14 +268,14 @@ route_authorization:
         review request or notify reviewers.
 
   authorization_summary: >-
-    v0.3 preserves v0.2 route authorization behavior. Audit-oriented and
+    v0.4 preserves route authorization behavior. Audit-oriented and
     review-oriented routing are allowed or conditionally allowed, while
     sensitive routes such as market registration, license publication, royalty
     execution, external settlement, AI training approval, and public origin
     claims remain blocked until Human Review Gate approval is recorded.
 
 reviewer_notification:
-  notification_id: review_notify_origin_trace_receipt_v0.3
+  notification_id: review_notify_origin_trace_receipt_v0.4
   notification_status: prepared
   notification_mode: recommendation_only
 
@@ -381,10 +381,133 @@ reviewer_notification:
         missing, but must not execute payment or settlement.
 
   notification_summary: >-
-    v0.3 prepares safe reviewer notifications for market registration,
-    license policy, and royalty review. Notifications include only safe
-    summary fields and explicitly block private, unredacted, sensitive, or
-    unverified payload items.
+    v0.4 preserves reviewer notification behavior. Safe reviewer notifications
+    are prepared for market registration, license policy, and royalty review.
+    Notifications include only safe summary fields and explicitly block private,
+    unredacted, sensitive, or unverified payload items.
+
+handoff_receipt_emission:
+  emission_id: handoff_emission_origin_trace_receipt_v0.4
+  emission_status: prepared
+  emission_mode: recommendation_only
+
+  emitted_receipts:
+    - emitted_receipt_id: emitted_receipt_sync_audit_handoff
+      receipt_type: audit_handoff_receipt
+      target_protocol: synchronization-audit-protocol
+      target_purpose: audit
+      related_route_id: route_sync_audit
+      related_review_request_ids: []
+      emission_decision: emit_internal
+      payload_scope:
+        included_fields:
+          - source_receipt_id
+          - receipt_schema_version
+          - gate_status
+          - decision_status
+          - routing_summary
+          - authorization_summary
+          - blocked_actions
+          - permitted_actions
+        excluded_fields:
+          - private_conversation_excerpt
+          - unredacted_evidence
+          - sensitive_identity
+          - external_settlement_details
+        redaction_required: true
+      review_dependency:
+        requires_human_review: false
+        requires_gate_pass: false
+        allowed_before_gate_pass: true
+        dependency_notes: >-
+          Synchronization audit is a review-oriented internal route and may be
+          prepared before the Human Review Gate passes, as long as the payload
+          is safe and no external settlement or public claim is triggered.
+      emission_reference: "handoff/sync-audit-handoff.example.yaml"
+      emission_rationale: >-
+        The audit handoff receipt can be emitted internally because it supports
+        review rather than execution.
+
+    - emitted_receipt_id: emitted_receipt_royalty_review_handoff
+      receipt_type: royalty_review_receipt
+      target_protocol: compute-access-royalty-os
+      target_purpose: royalty_review
+      related_route_id: route_compute_royalty_review
+      related_review_request_ids:
+        - review_request_royalty_execution
+      emission_decision: prepare_for_manual_emit
+      payload_scope:
+        included_fields:
+          - source_receipt_id
+          - gate_status
+          - decision_status
+          - authorization_summary
+          - notification_summary
+          - blocked_actions
+        excluded_fields:
+          - sensitive_identity
+          - external_settlement_details
+          - unredacted_evidence
+        redaction_required: true
+      review_dependency:
+        requires_human_review: true
+        requires_gate_pass: false
+        allowed_before_gate_pass: true
+        dependency_notes: >-
+          Royalty review may be prepared before the gate passes, but royalty
+          execution and external settlement remain blocked.
+      emission_reference: "handoff/royalty-review-handoff.example.yaml"
+      emission_rationale: >-
+        The royalty review receipt may be prepared for manual review, but not
+        used to execute payment or settlement.
+
+    - emitted_receipt_id: emitted_receipt_market_registration_blocked
+      receipt_type: blocked_route_receipt
+      target_protocol: origin-structure-market
+      target_purpose: blocked_route_record
+      related_route_id: route_origin_market_registration
+      related_review_request_ids:
+        - review_request_market_registration
+      emission_decision: defer
+      payload_scope:
+        included_fields:
+          - source_receipt_id
+          - gate_status
+          - decision_status
+          - authorization_summary
+          - notification_summary
+          - blocked_actions
+        excluded_fields:
+          - private_conversation_excerpt
+          - unredacted_evidence
+          - unverified_origin_claim
+        redaction_required: true
+      review_dependency:
+        requires_human_review: true
+        requires_gate_pass: true
+        allowed_before_gate_pass: false
+        dependency_notes: >-
+          Market registration requires Human Review Gate approval before the
+          receipt can be routed to a registration system.
+      emission_reference: "handoff/market-registration-blocked.example.yaml"
+      emission_rationale: >-
+        A blocked-route receipt may be recorded, but market registration itself
+        must remain deferred until review passes.
+
+  emission_policy:
+    default_emission_mode: recommendation_only
+    external_emission_allowed: false
+    requires_safe_payload: true
+    policy_notes: >-
+      The agent may prepare internal or review-oriented handoff receipts with
+      safe payloads. External emission is not allowed until Human Review Gate
+      and route-specific authorization conditions are satisfied.
+
+  emission_summary: >-
+    v0.4 prepares downstream handoff receipts for synchronization audit,
+    royalty review, and blocked market registration. The layer distinguishes
+    internal review emission from external execution and prevents unsafe payload
+    emission.
 
 action_policy:
   execution_mode: recommendation_only
@@ -400,6 +523,9 @@ action_policy:
     - create_review_notification
     - prepare_safe_payload
     - request_human_review
+    - create_handoff_receipt
+    - prepare_downstream_receipt
+    - emit_internal_handoff_receipt
 
   prohibited_agent_actions:
     - execute_payment
@@ -411,23 +537,27 @@ action_policy:
     - auto_forward_to_external_system
     - send_unredacted_private_evidence
     - notify_external_system_without_review
+    - emit_external_handoff_without_review
+    - emit_receipt_with_unredacted_payload
 
   policy_summary: >-
     The agent may inspect, classify, recommend, emit a handoff record, prepare
-    safe reviewer notifications, and request human review. It may not execute
-    sensitive actions, bypass the Human Review Gate, send unredacted private
-    evidence, or notify external systems without review.
+    reviewer notifications, and prepare safe downstream handoff receipts. It may
+    not execute sensitive actions, emit external handoff receipts without review,
+    or include unredacted private payloads.
 
 handoff_result:
   result_status: recommended
   emitted_records:
-    - agent_handoff_2026-07-03-reviewer-notification-v0.3
+    - agent_handoff_2026-07-03-handoff-receipt-emission-v0.4
+    - emitted_receipt_sync_audit_handoff
+    - emitted_receipt_royalty_review_handoff
+    - emitted_receipt_market_registration_blocked
   result_summary: >-
-    A gate-aware route authorization and reviewer notification recommendation
-    was recorded. Audit and royalty review routes are allowed or conditionally
-    allowed, while sensitive downstream actions remain blocked. Safe reviewer
-    notifications were prepared for market registration, license policy, and
-    royalty review.
+    A gate-aware route authorization, reviewer notification, and handoff
+    receipt emission recommendation was recorded. Internal audit handoff may be
+    prepared, royalty review may be prepared for manual review, and market
+    registration remains deferred until Human Review Gate approval.
 
 validation:
   validation_status: draft
