@@ -1,7 +1,7 @@
-schema_version: "0.1.0"
+schema_version: "0.2.0"
 record_type: origin_trace_agent_handoff
-handoff_id: agent_handoff_2026-07-03-receipt-intake-v0.1
-created_at: "2026-07-03T01:24:00Z"
+handoff_id: agent_handoff_2026-07-03-route-authorization-v0.2
+created_at: "2026-07-03T01:40:00Z"
 
 source_receipt:
   receipt_id: otr_2026-07-03-human-review-gate-v0.5
@@ -10,11 +10,11 @@ source_receipt:
   receipt_status: draft
 
 agent_context:
-  agent_id: agent_origin_trace_router_v0.1
+  agent_id: agent_origin_trace_router_v0.2
   agent_type: routing_agent
   agent_role: >-
-    Reads an Origin Trace Receipt, checks the Human Review Gate, and records
-    safe routing recommendations for downstream protocols.
+    Reads an Origin Trace Receipt, checks the Human Review Gate, authorizes
+    safe downstream routes, and records routing recommendations.
   autonomy_level: recommendation_only
 
 intake:
@@ -36,7 +36,8 @@ intake:
   missing_layers: []
   intake_summary: >-
     The v0.5 Origin Trace Receipt was parsed successfully. All expected first
-    arc layers were detected, including the Human Review Gate.
+    arc layers were detected, including the Human Review Gate and royalty
+    handoff routing information.
 
 gate_check:
   gate_check_id: gate_check_origin_trace_receipt_v0.5
@@ -84,7 +85,8 @@ gate_check:
   gate_summary: >-
     Human review is required and still pending. The agent may record and
     recommend routing, but must not execute settlement, market registration,
-    license publication, public origin claims, or autonomous external handoff.
+    license publication, public origin claims, training approval, or autonomous
+    external handoff.
 
 routing:
   routing_id: routing_origin_trace_receipt_v0.5
@@ -131,6 +133,145 @@ routing:
     steps. Market registration, license publication, and external settlement
     remain blocked until human review is completed.
 
+route_authorization:
+  authorization_id: route_auth_origin_trace_receipt_v0.2
+  authorization_status: partially_authorized
+  authorization_mode: mixed
+
+  authorization_records:
+    - route_id: route_sync_audit
+      target_id: target_sync_audit
+      target_protocol: synchronization-audit-protocol
+      target_purpose: audit
+      authorization_decision: authorized
+      gate_dependency:
+        requires_human_gate_pass: false
+        accepted_gate_statuses:
+          - required
+          - pending
+          - passed
+        required_decision_statuses:
+          - pending
+          - approved
+          - approved_with_conditions
+      permitted_route_actions:
+        - send_to_audit_queue
+        - emit_recommendation
+        - archive_record
+      blocked_route_actions:
+        - register_market_asset
+        - publish_license
+        - execute_royalty
+        - execute_external_settlement
+        - make_public_origin_claim
+      authorization_conditions:
+        - condition_id: auth_condition_audit_only
+          condition_summary: >-
+            The route is authorized only for audit review. It must not trigger
+            market registration, license publication, royalty execution, public
+            origin claims, or external settlement.
+      authorization_rationale: >-
+        Synchronization audit is a review-oriented route and may proceed while
+        the Human Review Gate is pending, as long as no sensitive downstream
+        execution is performed.
+
+    - route_id: route_compute_royalty_review
+      target_id: target_compute_royalty
+      target_protocol: compute-access-royalty-os
+      target_purpose: royalty_review
+      authorization_decision: conditionally_authorized
+      gate_dependency:
+        requires_human_gate_pass: false
+        accepted_gate_statuses:
+          - required
+          - pending
+          - passed
+        required_decision_statuses:
+          - pending
+          - approved
+          - approved_with_conditions
+      permitted_route_actions:
+        - send_to_human_review_queue
+        - create_review_ticket
+        - emit_recommendation
+        - notify_reviewer
+      blocked_route_actions:
+        - execute_royalty
+        - execute_external_settlement
+        - auto_forward_external
+      authorization_conditions:
+        - condition_id: auth_condition_review_only
+          condition_summary: >-
+            Royalty review may be recommended, but royalty execution is blocked
+            until recipient identity and Human Review Gate approval are complete.
+      authorization_rationale: >-
+        The route is allowed only as a review route. It cannot execute payment
+        or settlement because the source receipt still has missing recipient
+        identity and pending human review.
+
+    - route_id: route_origin_market_registration
+      target_id: target_origin_market
+      target_protocol: origin-structure-market
+      target_purpose: market_registration
+      authorization_decision: blocked
+      gate_dependency:
+        requires_human_gate_pass: true
+        accepted_gate_statuses:
+          - passed
+        required_decision_statuses:
+          - approved
+          - approved_with_conditions
+      permitted_route_actions:
+        - create_review_ticket
+        - notify_reviewer
+      blocked_route_actions:
+        - register_market_asset
+        - make_public_origin_claim
+        - auto_forward_external
+      authorization_conditions:
+        - condition_id: auth_condition_gate_must_pass
+          condition_summary: >-
+            Market registration requires a passed Human Review Gate decision
+            before the agent may route the receipt for registration.
+      authorization_rationale: >-
+        Market registration is sensitive because it may create a public claim
+        about origin or derivative status. It is blocked until review passes.
+
+    - route_id: route_license_publication
+      target_id: target_license_registry
+      target_protocol: origin-license-policy-registry
+      target_purpose: licensing
+      authorization_decision: blocked
+      gate_dependency:
+        requires_human_gate_pass: true
+        accepted_gate_statuses:
+          - passed
+        required_decision_statuses:
+          - approved
+          - approved_with_conditions
+      permitted_route_actions:
+        - create_review_ticket
+        - notify_reviewer
+      blocked_route_actions:
+        - publish_license
+        - approve_training_use
+        - auto_forward_external
+      authorization_conditions:
+        - condition_id: auth_condition_license_review
+          condition_summary: >-
+            License publication and AI training approval require explicit human
+            review because the source receipt marks commercial and training
+            status as restricted.
+      authorization_rationale: >-
+        The route is blocked for publication. The agent may only create a
+        review request or notify reviewers.
+
+  authorization_summary: >-
+    v0.2 authorizes audit-oriented and review-oriented routing while blocking
+    sensitive routes such as market registration, license publication, royalty
+    execution, external settlement, AI training approval, and public origin
+    claims until Human Review Gate approval is recorded.
+
 action_policy:
   execution_mode: recommendation_only
 
@@ -153,17 +294,20 @@ action_policy:
     - auto_forward_to_external_system
 
   policy_summary: >-
-    The agent may inspect, classify, recommend, and emit a handoff record.
-    It may not execute sensitive actions or bypass the Human Review Gate.
+    The agent may inspect, classify, recommend, emit a handoff record, and
+    notify a human reviewer. It may not execute sensitive actions or bypass
+    the Human Review Gate.
 
 handoff_result:
   result_status: recommended
   emitted_records:
-    - agent_handoff_2026-07-03-receipt-intake-v0.1
+    - agent_handoff_2026-07-03-route-authorization-v0.2
   result_summary: >-
-    A safe handoff recommendation was recorded. The receipt should proceed to
-    synchronization audit and royalty review, while sensitive downstream actions
-    remain blocked pending human review.
+    A gate-aware route authorization recommendation was recorded. Audit and
+    royalty review routes are allowed or conditionally allowed, while market
+    registration, license publication, royalty execution, external settlement,
+    training approval, and public origin claims remain blocked pending human
+    review.
 
 validation:
   validation_status: draft
