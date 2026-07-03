@@ -1,7 +1,7 @@
-schema_version: "0.4.0"
+schema_version: "0.5.0"
 record_type: origin_trace_agent_handoff
-handoff_id: agent_handoff_2026-07-03-handoff-receipt-emission-v0.4
-created_at: "2026-07-03T02:15:00Z"
+handoff_id: agent_handoff_2026-07-03-agent-boundary-seal-v0.5
+created_at: "2026-07-03T02:25:00Z"
 
 source_receipt:
   receipt_id: otr_2026-07-03-human-review-gate-v0.5
@@ -10,12 +10,13 @@ source_receipt:
   receipt_status: draft
 
 agent_context:
-  agent_id: agent_origin_trace_router_v0.4
+  agent_id: agent_origin_trace_router_v0.5
   agent_type: routing_agent
   agent_role: >-
     Reads an Origin Trace Receipt, checks the Human Review Gate, authorizes
     safe downstream routes, prepares reviewer notifications, prepares safe
-    downstream handoff receipts, and records routing recommendations.
+    downstream handoff receipts, seals agent autonomy boundaries, and records
+    routing recommendations.
   autonomy_level: recommendation_only
 
 intake:
@@ -135,7 +136,7 @@ routing:
     remain blocked until human review is completed.
 
 route_authorization:
-  authorization_id: route_auth_origin_trace_receipt_v0.4
+  authorization_id: route_auth_origin_trace_receipt_v0.5
   authorization_status: partially_authorized
   authorization_mode: mixed
 
@@ -268,14 +269,14 @@ route_authorization:
         review request or notify reviewers.
 
   authorization_summary: >-
-    v0.4 preserves route authorization behavior. Audit-oriented and
+    v0.5 preserves route authorization behavior. Audit-oriented and
     review-oriented routing are allowed or conditionally allowed, while
     sensitive routes such as market registration, license publication, royalty
     execution, external settlement, AI training approval, and public origin
     claims remain blocked until Human Review Gate approval is recorded.
 
 reviewer_notification:
-  notification_id: review_notify_origin_trace_receipt_v0.4
+  notification_id: review_notify_origin_trace_receipt_v0.5
   notification_status: prepared
   notification_mode: recommendation_only
 
@@ -381,13 +382,13 @@ reviewer_notification:
         missing, but must not execute payment or settlement.
 
   notification_summary: >-
-    v0.4 preserves reviewer notification behavior. Safe reviewer notifications
+    v0.5 preserves reviewer notification behavior. Safe reviewer notifications
     are prepared for market registration, license policy, and royalty review.
     Notifications include only safe summary fields and explicitly block private,
     unredacted, sensitive, or unverified payload items.
 
 handoff_receipt_emission:
-  emission_id: handoff_emission_origin_trace_receipt_v0.4
+  emission_id: handoff_emission_origin_trace_receipt_v0.5
   emission_status: prepared
   emission_mode: recommendation_only
 
@@ -504,10 +505,147 @@ handoff_receipt_emission:
       and route-specific authorization conditions are satisfied.
 
   emission_summary: >-
-    v0.4 prepares downstream handoff receipts for synchronization audit,
-    royalty review, and blocked market registration. The layer distinguishes
-    internal review emission from external execution and prevents unsafe payload
-    emission.
+    v0.5 preserves handoff receipt emission behavior. The agent may prepare
+    downstream handoff receipts for synchronization audit, royalty review, and
+    blocked market registration. The layer distinguishes internal review
+    emission from external execution and prevents unsafe payload emission.
+
+agent_boundary_seal:
+  seal_id: boundary_seal_origin_trace_agent_v0.5
+  seal_status: sealed
+  autonomy_ceiling: internal_receipt_emission_only
+
+  sealed_boundary_rules:
+    - rule_id: boundary_rule_payment_execution_block
+      rule_type: payment_execution_block
+      rule_status: active
+      rule_summary: >-
+        The agent must not execute payment, royalty settlement, or external
+        settlement. It may only prepare royalty review receipts or request
+        human review.
+      applies_to_actions:
+        - execute_payment
+      allowed_agent_response: request_human_review
+      required_human_role: royalty_operator
+
+    - rule_id: boundary_rule_market_registration_block
+      rule_type: market_registration_block
+      rule_status: active
+      rule_summary: >-
+        The agent must not register an origin asset, derivative asset, or market
+        listing without Human Review Gate approval and explicit route
+        authorization.
+      applies_to_actions:
+        - register_market_asset
+        - make_public_origin_claim
+      allowed_agent_response: emit_blocked_route_receipt
+      required_human_role: market_operator
+
+    - rule_id: boundary_rule_license_publication_block
+      rule_type: license_publication_block
+      rule_status: active
+      rule_summary: >-
+        The agent must not publish a license policy or approve AI training use
+        when commercial or training status is restricted or pending review.
+      applies_to_actions:
+        - publish_license
+        - approve_training_use
+      allowed_agent_response: request_human_review
+      required_human_role: legal_reviewer
+
+    - rule_id: boundary_rule_external_execution_block
+      rule_type: external_execution_block
+      rule_status: active
+      rule_summary: >-
+        The agent must not emit external handoff receipts or execution receipts
+        unless Human Review Gate and route authorization conditions are
+        satisfied.
+      applies_to_actions:
+        - emit_external_handoff
+        - emit_execution_receipt
+        - execute_payment
+      allowed_agent_response: defer
+      required_human_role: human_gatekeeper
+
+    - rule_id: boundary_rule_payload_redaction_required
+      rule_type: payload_redaction_required
+      rule_status: active
+      rule_summary: >-
+        The agent must not send private conversation excerpts, unredacted
+        evidence, sensitive identity information, external settlement details,
+        or unverified origin claims in downstream payloads.
+      applies_to_actions:
+        - send_unredacted_payload
+      allowed_agent_response: prepare_safe_summary
+      required_human_role: auditor
+
+    - rule_id: boundary_rule_self_modification_block
+      rule_type: boundary_self_modification_block
+      rule_status: active
+      rule_summary: >-
+        The agent must not modify, weaken, remove, or reinterpret its own
+        boundary seal.
+      applies_to_actions:
+        - modify_boundary_seal
+        - override_human_review_gate
+        - override_route_authorization
+      allowed_agent_response: block
+      required_human_role: human_gatekeeper
+
+  non_bypassable_actions:
+    - payment_execution
+    - market_registration
+    - license_publication
+    - training_use_approval
+    - public_origin_claim
+    - external_settlement
+    - external_handoff_emission
+    - unredacted_payload_transmission
+    - human_review_gate_override
+    - route_authorization_override
+    - boundary_seal_modification
+
+  escalation_policy:
+    escalation_required: true
+    escalation_targets:
+      - human_gatekeeper
+      - auditor
+      - legal_reviewer
+      - market_operator
+      - royalty_operator
+    escalation_trigger_actions:
+      - attempted_payment_execution
+      - attempted_market_registration
+      - attempted_license_publication
+      - attempted_training_approval
+      - attempted_public_origin_claim
+      - attempted_external_settlement
+      - attempted_external_handoff
+      - attempted_unredacted_payload_transmission
+      - attempted_gate_override
+      - attempted_route_override
+      - attempted_boundary_modification
+    escalation_summary: >-
+      Any attempt to bypass Human Review Gate, override route authorization,
+      emit external execution records, or transmit unsafe payloads must be
+      blocked and escalated to the appropriate human reviewer.
+
+  violation_response:
+    on_violation: block_record_and_notify
+    record_violation: true
+    halt_downstream_actions: true
+    notify_human_reviewer: true
+    violation_summary: >-
+      If a sealed boundary rule is violated, the agent must stop downstream
+      actions, record the attempted violation, and notify a human reviewer.
+
+  seal_summary: >-
+    v0.5 seals the agent autonomy boundary. The agent may read, validate,
+    recommend, prepare safe notifications, and emit internal review-oriented
+    handoff receipts. It may not execute payments, register assets, publish
+    licenses, approve training use, make public origin claims, emit external
+    execution receipts, transmit unsafe payloads, override review gates, or
+    modify its own boundary seal.
 
 action_policy:
   execution_mode: recommendation_only
@@ -526,6 +664,9 @@ action_policy:
     - create_handoff_receipt
     - prepare_downstream_receipt
     - emit_internal_handoff_receipt
+    - record_boundary_seal
+    - check_boundary_seal
+    - escalate_boundary_violation
 
   prohibited_agent_actions:
     - execute_payment
@@ -539,25 +680,34 @@ action_policy:
     - notify_external_system_without_review
     - emit_external_handoff_without_review
     - emit_receipt_with_unredacted_payload
+    - modify_boundary_seal
+    - override_route_authorization
+    - override_human_review_gate
+    - emit_external_execution_receipt
 
   policy_summary: >-
     The agent may inspect, classify, recommend, emit a handoff record, prepare
-    reviewer notifications, and prepare safe downstream handoff receipts. It may
-    not execute sensitive actions, emit external handoff receipts without review,
-    or include unredacted private payloads.
+    reviewer notifications, prepare safe downstream handoff receipts, record the
+    boundary seal, check boundary compliance, and escalate violations. It may
+    not execute sensitive actions, emit external handoff or execution receipts
+    without review, include unredacted private payloads, override review gates,
+    override route authorization, or modify its own boundary seal.
 
 handoff_result:
   result_status: recommended
   emitted_records:
-    - agent_handoff_2026-07-03-handoff-receipt-emission-v0.4
+    - agent_handoff_2026-07-03-agent-boundary-seal-v0.5
     - emitted_receipt_sync_audit_handoff
     - emitted_receipt_royalty_review_handoff
     - emitted_receipt_market_registration_blocked
+    - boundary_seal_origin_trace_agent_v0.5
   result_summary: >-
-    A gate-aware route authorization, reviewer notification, and handoff
-    receipt emission recommendation was recorded. Internal audit handoff may be
-    prepared, royalty review may be prepared for manual review, and market
-    registration remains deferred until Human Review Gate approval.
+    A gate-aware route authorization, reviewer notification, handoff receipt
+    emission, and agent boundary seal recommendation was recorded. Internal
+    audit handoff may be prepared, royalty review may be prepared for manual
+    review, market registration remains deferred, and the agent boundary is
+    sealed against unsafe execution, external emission, review bypass, and
+    self-modification.
 
 validation:
   validation_status: draft
