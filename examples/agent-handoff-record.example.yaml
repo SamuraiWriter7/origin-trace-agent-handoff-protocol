@@ -1,0 +1,169 @@
+schema_version: "0.1.0"
+record_type: origin_trace_agent_handoff
+handoff_id: agent_handoff_2026-07-03-receipt-intake-v0.1
+created_at: "2026-07-03T01:24:00Z"
+
+source_receipt:
+  receipt_id: otr_2026-07-03-human-review-gate-v0.5
+  receipt_schema_version: "0.5.0"
+  receipt_reference: "origin-trace-receipt-standard/examples/origin-trace-receipt.example.yaml"
+  receipt_status: draft
+
+agent_context:
+  agent_id: agent_origin_trace_router_v0.1
+  agent_type: routing_agent
+  agent_role: >-
+    Reads an Origin Trace Receipt, checks the Human Review Gate, and records
+    safe routing recommendations for downstream protocols.
+  autonomy_level: recommendation_only
+
+intake:
+  intake_id: intake_origin_trace_receipt_v0.5
+  intake_status: parsed
+  receipt_layers_detected:
+    - origin
+    - trace
+    - transformation
+    - evidence
+    - transformation_diff
+    - audit
+    - royalty_hook
+    - royalty_handoff
+    - human_review_gate
+    - boundary
+    - handoff
+    - validation
+  missing_layers: []
+  intake_summary: >-
+    The v0.5 Origin Trace Receipt was parsed successfully. All expected first
+    arc layers were detected, including the Human Review Gate.
+
+gate_check:
+  gate_check_id: gate_check_origin_trace_receipt_v0.5
+  human_review_gate_status: required
+  decision_status: pending
+
+  blocking_conditions_detected:
+    - condition_id: condition_missing_recipient_identity
+      condition_type: missing_recipient_identity
+      severity: high
+      blocks_actions:
+        - royalty_execution
+        - external_settlement
+
+    - condition_id: condition_market_registration_review
+      condition_type: market_registration
+      severity: medium
+      blocks_actions:
+        - market_registration
+        - public_claim
+
+    - condition_id: condition_custom_license_policy
+      condition_type: custom_policy
+      severity: medium
+      blocks_actions:
+        - license_publication
+        - commercial_use
+        - training_use
+
+  permitted_actions:
+    - archive_only
+    - attribution_publication
+    - royalty_handoff
+
+  blocked_actions:
+    - market_registration
+    - license_publication
+    - commercial_use
+    - training_use
+    - royalty_execution
+    - external_settlement
+    - public_origin_claim
+    - agent_auto_handoff
+
+  gate_summary: >-
+    Human review is required and still pending. The agent may record and
+    recommend routing, but must not execute settlement, market registration,
+    license publication, public origin claims, or autonomous external handoff.
+
+routing:
+  routing_id: routing_origin_trace_receipt_v0.5
+  routing_status: ready_for_manual_review
+
+  candidate_targets:
+    - target_id: target_sync_audit
+      target_protocol: synchronization-audit-protocol
+      target_purpose: audit
+      routing_readiness: ready
+      routing_notes: >-
+        The receipt may be passed to synchronization audit for deeper similarity
+        or derivation review.
+
+    - target_id: target_origin_market
+      target_protocol: origin-structure-market
+      target_purpose: market_registration
+      routing_readiness: manual_review_required
+      routing_notes: >-
+        Market registration is blocked until Human Review Gate approval.
+
+    - target_id: target_license_registry
+      target_protocol: origin-license-policy-registry
+      target_purpose: licensing
+      routing_readiness: manual_review_required
+      routing_notes: >-
+        License publication requires review because commercial and training
+        status are restricted.
+
+    - target_id: target_compute_royalty
+      target_protocol: compute-access-royalty-os
+      target_purpose: royalty_review
+      routing_readiness: manual_review_required
+      routing_notes: >-
+        Royalty review may proceed, but execution is blocked until recipient
+        identity and settlement details are complete.
+
+  selected_targets:
+    - target_sync_audit
+    - target_compute_royalty
+
+  routing_summary: >-
+    The agent recommends synchronization audit and royalty review as safe next
+    steps. Market registration, license publication, and external settlement
+    remain blocked until human review is completed.
+
+action_policy:
+  execution_mode: recommendation_only
+
+  allowed_agent_actions:
+    - read_receipt
+    - validate_receipt
+    - summarize_receipt
+    - classify_gate_status
+    - recommend_targets
+    - emit_handoff_record
+    - notify_human_reviewer
+
+  prohibited_agent_actions:
+    - execute_payment
+    - register_market_asset
+    - publish_license
+    - approve_training_use
+    - make_public_origin_claim
+    - bypass_human_review_gate
+    - auto_forward_to_external_system
+
+  policy_summary: >-
+    The agent may inspect, classify, recommend, and emit a handoff record.
+    It may not execute sensitive actions or bypass the Human Review Gate.
+
+handoff_result:
+  result_status: recommended
+  emitted_records:
+    - agent_handoff_2026-07-03-receipt-intake-v0.1
+  result_summary: >-
+    A safe handoff recommendation was recorded. The receipt should proceed to
+    synchronization audit and royalty review, while sensitive downstream actions
+    remain blocked pending human review.
+
+validation:
+  validation_status: draft
