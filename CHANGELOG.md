@@ -2,6 +2,66 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.0-candidate] - 2026-07-03
+
+### Added
+
+- Added Reviewer Notification Layer.
+- Added `reviewer_notification` as a required top-level layer.
+- Added notification ID.
+- Added notification status values:
+  - draft
+  - prepared
+  - queued
+  - sent
+  - deferred
+  - blocked
+  - not_required
+- Added notification modes:
+  - record_only
+  - recommendation_only
+  - manual_send_required
+  - agent_may_notify
+  - external_system
+  - mixed
+- Added review requests.
+- Added reviewer roles.
+- Added review reasons.
+- Added notification priority.
+- Added related route references.
+- Added related blocking condition references.
+- Added requested reviewer decisions.
+- Added notification channel classification.
+- Added safe notification payload.
+- Added blocked payload item classification.
+- Added review request status.
+- Added new allowed agent actions:
+  - create_review_notification
+  - prepare_safe_payload
+  - request_human_review
+- Added new prohibited agent actions:
+  - send_unredacted_private_evidence
+  - notify_external_system_without_review
+
+### Changed
+
+- Updated `schema_version` from `0.2.0` to `0.3.0`.
+- Updated the example record to prepare reviewer notifications for:
+  - market registration review
+  - license policy review
+  - royalty execution review
+- Updated action policy to allow safe notification preparation while blocking sensitive automatic notification behavior.
+
+### Purpose
+
+v0.3 ensures that blocked or conditional routes do not simply disappear.
+
+The agent can now prepare safe reviewer notifications explaining why review is needed, which routes are affected, what decision is requested, and which payload items must not be included.
+
+This release keeps the protocol conservative.  
+The agent may prepare review notifications and request human review.  
+The agent may not send private, unredacted, sensitive, or externally actionable payloads without review.
+
 ## [v0.2.0-candidate] - 2026-07-03
 
 ### Added
