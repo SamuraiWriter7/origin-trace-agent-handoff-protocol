@@ -1,7 +1,7 @@
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 record_type: origin_trace_agent_handoff
-handoff_id: agent_handoff_2026-07-03-route-authorization-v0.2
-created_at: "2026-07-03T01:40:00Z"
+handoff_id: agent_handoff_2026-07-03-reviewer-notification-v0.3
+created_at: "2026-07-03T01:50:00Z"
 
 source_receipt:
   receipt_id: otr_2026-07-03-human-review-gate-v0.5
@@ -10,11 +10,12 @@ source_receipt:
   receipt_status: draft
 
 agent_context:
-  agent_id: agent_origin_trace_router_v0.2
+  agent_id: agent_origin_trace_router_v0.3
   agent_type: routing_agent
   agent_role: >-
     Reads an Origin Trace Receipt, checks the Human Review Gate, authorizes
-    safe downstream routes, and records routing recommendations.
+    safe downstream routes, prepares reviewer notifications, and records
+    routing recommendations.
   autonomy_level: recommendation_only
 
 intake:
@@ -134,7 +135,7 @@ routing:
     remain blocked until human review is completed.
 
 route_authorization:
-  authorization_id: route_auth_origin_trace_receipt_v0.2
+  authorization_id: route_auth_origin_trace_receipt_v0.3
   authorization_status: partially_authorized
   authorization_mode: mixed
 
@@ -267,10 +268,123 @@ route_authorization:
         review request or notify reviewers.
 
   authorization_summary: >-
-    v0.2 authorizes audit-oriented and review-oriented routing while blocking
+    v0.3 preserves v0.2 route authorization behavior. Audit-oriented and
+    review-oriented routing are allowed or conditionally allowed, while
     sensitive routes such as market registration, license publication, royalty
     execution, external settlement, AI training approval, and public origin
-    claims until Human Review Gate approval is recorded.
+    claims remain blocked until Human Review Gate approval is recorded.
+
+reviewer_notification:
+  notification_id: review_notify_origin_trace_receipt_v0.3
+  notification_status: prepared
+  notification_mode: recommendation_only
+
+  review_requests:
+    - request_id: review_request_market_registration
+      reviewer_role: market_operator
+      review_reason: market_registration_review
+      priority: high
+      related_routes:
+        - route_origin_market_registration
+      related_blocking_conditions:
+        - condition_market_registration_review
+      requested_decision: approve_with_conditions
+      notification_channel: manual
+      safe_notification_payload:
+        title: "Review required before Origin Market registration"
+        summary: >-
+          The source receipt is ready for review but market registration is
+          blocked until the Human Review Gate passes. The agent recommends
+          review of origin, evidence, transformation diff, license policy, and
+          royalty handoff before any public registration occurs.
+        included_fields:
+          - source_receipt_id
+          - receipt_schema_version
+          - gate_status
+          - decision_status
+          - blocked_actions
+          - candidate_targets
+          - authorization_summary
+          - routing_summary
+          - evidence_summary
+          - diff_summary
+      blocked_payload_items:
+        - private_conversation_excerpt
+        - unredacted_evidence
+        - unverified_origin_claim
+      request_status: ready
+      request_notes: >-
+        The agent may prepare this notification but should not send it to an
+        external system automatically. Manual review is required.
+
+    - request_id: review_request_license_policy
+      reviewer_role: legal_reviewer
+      review_reason: license_policy_review
+      priority: high
+      related_routes:
+        - route_license_publication
+      related_blocking_conditions:
+        - condition_custom_license_policy
+      requested_decision: approve_with_conditions
+      notification_channel: manual
+      safe_notification_payload:
+        title: "License policy review required"
+        summary: >-
+          License publication and AI training approval are blocked because the
+          source receipt marks commercial and training status as restricted.
+          A reviewer should decide whether attribution-only, restricted
+          commercial use, or no-training conditions apply.
+        included_fields:
+          - source_receipt_id
+          - receipt_schema_version
+          - gate_status
+          - blocked_actions
+          - authorization_summary
+          - boundary_summary
+      blocked_payload_items:
+        - private_conversation_excerpt
+        - unredacted_evidence
+        - sensitive_identity
+      request_status: ready
+      request_notes: >-
+        The notification should be reviewed before publication or external
+        license registry handoff.
+
+    - request_id: review_request_royalty_execution
+      reviewer_role: royalty_operator
+      review_reason: missing_recipient_identity
+      priority: medium
+      related_routes:
+        - route_compute_royalty_review
+      related_blocking_conditions:
+        - condition_missing_recipient_identity
+      requested_decision: request_more_evidence
+      notification_channel: manual
+      safe_notification_payload:
+        title: "Royalty review requires recipient identity"
+        summary: >-
+          Royalty review may proceed as a recommendation, but royalty execution
+          and external settlement are blocked until recipient identity and
+          settlement details are complete.
+        included_fields:
+          - source_receipt_id
+          - gate_status
+          - decision_status
+          - blocked_actions
+          - authorization_summary
+      blocked_payload_items:
+        - sensitive_identity
+        - external_settlement_details
+      request_status: ready
+      request_notes: >-
+        The agent may notify a human reviewer that recipient identity is
+        missing, but must not execute payment or settlement.
+
+  notification_summary: >-
+    v0.3 prepares safe reviewer notifications for market registration,
+    license policy, and royalty review. Notifications include only safe
+    summary fields and explicitly block private, unredacted, sensitive, or
+    unverified payload items.
 
 action_policy:
   execution_mode: recommendation_only
@@ -283,6 +397,9 @@ action_policy:
     - recommend_targets
     - emit_handoff_record
     - notify_human_reviewer
+    - create_review_notification
+    - prepare_safe_payload
+    - request_human_review
 
   prohibited_agent_actions:
     - execute_payment
@@ -292,22 +409,25 @@ action_policy:
     - make_public_origin_claim
     - bypass_human_review_gate
     - auto_forward_to_external_system
+    - send_unredacted_private_evidence
+    - notify_external_system_without_review
 
   policy_summary: >-
-    The agent may inspect, classify, recommend, emit a handoff record, and
-    notify a human reviewer. It may not execute sensitive actions or bypass
-    the Human Review Gate.
+    The agent may inspect, classify, recommend, emit a handoff record, prepare
+    safe reviewer notifications, and request human review. It may not execute
+    sensitive actions, bypass the Human Review Gate, send unredacted private
+    evidence, or notify external systems without review.
 
 handoff_result:
   result_status: recommended
   emitted_records:
-    - agent_handoff_2026-07-03-route-authorization-v0.2
+    - agent_handoff_2026-07-03-reviewer-notification-v0.3
   result_summary: >-
-    A gate-aware route authorization recommendation was recorded. Audit and
-    royalty review routes are allowed or conditionally allowed, while market
-    registration, license publication, royalty execution, external settlement,
-    training approval, and public origin claims remain blocked pending human
-    review.
+    A gate-aware route authorization and reviewer notification recommendation
+    was recorded. Audit and royalty review routes are allowed or conditionally
+    allowed, while sensitive downstream actions remain blocked. Safe reviewer
+    notifications were prepared for market registration, license policy, and
+    royalty review.
 
 validation:
   validation_status: draft
