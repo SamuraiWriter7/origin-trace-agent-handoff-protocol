@@ -17,6 +17,7 @@
     "route_authorization",
     "reviewer_notification",
     "handoff_receipt_emission",
+    "agent_boundary_seal",
     "action_policy",
     "handoff_result"
   ],
@@ -24,7 +25,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "0.4.0"
+      "const": "0.5.0"
     },
     "record_type": {
       "type": "string",
@@ -1043,6 +1044,260 @@
         }
       }
     },
+    "agent_boundary_seal": {
+      "type": "object",
+      "required": [
+        "seal_id",
+        "seal_status",
+        "autonomy_ceiling",
+        "sealed_boundary_rules",
+        "non_bypassable_actions",
+        "escalation_policy",
+        "violation_response",
+        "seal_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "seal_id": {
+          "type": "string",
+          "pattern": "^boundary_seal_[A-Za-z0-9._-]+$"
+        },
+        "seal_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "sealed",
+            "active",
+            "superseded",
+            "revoked",
+            "not_required"
+          ]
+        },
+        "autonomy_ceiling": {
+          "type": "string",
+          "enum": [
+            "read_only",
+            "recommendation_only",
+            "internal_receipt_emission_only",
+            "manual_approval_required",
+            "limited_execution",
+            "blocked"
+          ]
+        },
+        "sealed_boundary_rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "rule_id",
+              "rule_type",
+              "rule_status",
+              "rule_summary",
+              "applies_to_actions",
+              "allowed_agent_response"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "rule_id": {
+                "type": "string",
+                "pattern": "^boundary_rule_[A-Za-z0-9._-]+$"
+              },
+              "rule_type": {
+                "type": "string",
+                "enum": [
+                  "human_review_required",
+                  "external_execution_block",
+                  "payment_execution_block",
+                  "market_registration_block",
+                  "license_publication_block",
+                  "training_approval_block",
+                  "public_origin_claim_block",
+                  "payload_redaction_required",
+                  "boundary_self_modification_block",
+                  "route_override_block",
+                  "other"
+                ]
+              },
+              "rule_status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "inactive",
+                  "superseded"
+                ]
+              },
+              "rule_summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "applies_to_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "execute_payment",
+                    "register_market_asset",
+                    "publish_license",
+                    "approve_training_use",
+                    "make_public_origin_claim",
+                    "emit_external_handoff",
+                    "emit_execution_receipt",
+                    "send_unredacted_payload",
+                    "override_human_review_gate",
+                    "override_route_authorization",
+                    "modify_boundary_seal",
+                    "other"
+                  ]
+                }
+              },
+              "allowed_agent_response": {
+                "type": "string",
+                "enum": [
+                  "block",
+                  "defer",
+                  "request_human_review",
+                  "emit_blocked_route_receipt",
+                  "prepare_safe_summary",
+                  "archive_only",
+                  "other"
+                ]
+              },
+              "required_human_role": {
+                "type": "string",
+                "enum": [
+                  "originator",
+                  "maintainer",
+                  "auditor",
+                  "legal_reviewer",
+                  "market_operator",
+                  "royalty_operator",
+                  "human_gatekeeper",
+                  "multi_party_review",
+                  "other"
+                ]
+              }
+            }
+          }
+        },
+        "non_bypassable_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "payment_execution",
+              "market_registration",
+              "license_publication",
+              "training_use_approval",
+              "public_origin_claim",
+              "external_settlement",
+              "external_handoff_emission",
+              "unredacted_payload_transmission",
+              "human_review_gate_override",
+              "route_authorization_override",
+              "boundary_seal_modification",
+              "other"
+            ]
+          }
+        },
+        "escalation_policy": {
+          "type": "object",
+          "required": [
+            "escalation_required",
+            "escalation_targets",
+            "escalation_trigger_actions",
+            "escalation_summary"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "escalation_required": {
+              "type": "boolean"
+            },
+            "escalation_targets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "originator",
+                  "maintainer",
+                  "auditor",
+                  "legal_reviewer",
+                  "market_operator",
+                  "royalty_operator",
+                  "human_gatekeeper",
+                  "multi_party_review",
+                  "other"
+                ]
+              }
+            },
+            "escalation_trigger_actions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "attempted_payment_execution",
+                  "attempted_market_registration",
+                  "attempted_license_publication",
+                  "attempted_training_approval",
+                  "attempted_public_origin_claim",
+                  "attempted_external_settlement",
+                  "attempted_external_handoff",
+                  "attempted_unredacted_payload_transmission",
+                  "attempted_gate_override",
+                  "attempted_route_override",
+                  "attempted_boundary_modification",
+                  "other"
+                ]
+              }
+            },
+            "escalation_summary": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "violation_response": {
+          "type": "object",
+          "required": [
+            "on_violation",
+            "record_violation",
+            "halt_downstream_actions",
+            "notify_human_reviewer",
+            "violation_summary"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "on_violation": {
+              "type": "string",
+              "enum": [
+                "block_and_record",
+                "block_record_and_notify",
+                "halt_all_downstream_actions",
+                "manual_review_required",
+                "other"
+              ]
+            },
+            "record_violation": {
+              "type": "boolean"
+            },
+            "halt_downstream_actions": {
+              "type": "boolean"
+            },
+            "notify_human_reviewer": {
+              "type": "boolean"
+            },
+            "violation_summary": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "seal_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "action_policy": {
       "type": "object",
       "required": [
@@ -1080,6 +1335,9 @@
               "create_handoff_receipt",
               "prepare_downstream_receipt",
               "emit_internal_handoff_receipt",
+              "record_boundary_seal",
+              "check_boundary_seal",
+              "escalate_boundary_violation",
               "other"
             ]
           }
@@ -1100,6 +1358,10 @@
               "notify_external_system_without_review",
               "emit_external_handoff_without_review",
               "emit_receipt_with_unredacted_payload",
+              "modify_boundary_seal",
+              "override_route_authorization",
+              "override_human_review_gate",
+              "emit_external_execution_receipt",
               "other"
             ]
           }
