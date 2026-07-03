@@ -164,3 +164,34 @@ MIT for open technical reuse
 Apache-2.0 for patent-aware technical reuse
 CC-BY-4.0 for documentation-focused reuse
 Custom attribution-required policy for origin-sensitive protocol work
+
+### Route Authorization Layer
+
+The Route Authorization Layer records which downstream routes an AI agent may use after inspecting an Origin Trace Receipt and its Human Review Gate.
+
+It distinguishes between:
+
+- authorized routes
+- conditionally authorized routes
+- routes requiring manual review
+- blocked routes
+- not-applicable routes
+
+This layer prevents an agent from treating all candidate targets as executable destinations.
+
+For example, an agent may be allowed to route a receipt to a synchronization audit queue, but blocked from routing the same receipt to market registration or royalty execution until the Human Review Gate has passed.
+
+The layer may define:
+
+- route ID
+- target protocol
+- target purpose
+- authorization decision
+- Human Review Gate dependency
+- permitted route actions
+- blocked route actions
+- authorization conditions
+- authorization rationale
+
+In v0.2, route authorization is still conservative.  
+The agent may recommend and record routes, but sensitive downstream actions remain blocked unless review conditions are satisfied.
