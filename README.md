@@ -1,10 +1,13 @@
 # Origin Trace Agent Handoff Protocol
 
-**Origin Trace Agent Handoff Protocol** is a gate-aware protocol for AI agents that consume Origin Trace Receipts and route them toward approved downstream systems.
+A gate-aware protocol for AI agents to consume Origin Trace Receipts and route them to approved downstream systems.
 
-It is designed as a downstream companion to:
+This repository defines a structured handoff record for AI agents that read, inspect, classify, route, notify, emit, and boundary-check Origin Trace Receipts.
+
+It is designed as a companion layer to:
 
 - Origin Trace Receipt Standard
+- AI Search Trace Receipt Standard
 - Synchronization Audit Protocol
 - Origin Structure Market
 - Origin License Policy Registry
@@ -12,160 +15,222 @@ It is designed as a downstream companion to:
 - Royalty OS
 - Multi-Wing orchestration systems
 
+The core purpose is simple:
+
+> An AI agent may read a receipt, recommend safe routes, prepare review records, and emit internal handoff receipts, but it must not bypass human review, execute sensitive actions, or modify its own boundary.
+
+---
+
 ## Purpose
 
-Origin Trace Receipt Standard records:
+AI-assisted creation increasingly produces structured records that describe:
 
 - origin
 - trace
+- transformation
 - evidence
 - transformation diff
 - audit state
 - royalty handoff
 - human review gate
-- protocol handoff
+- downstream handoff intent
 
-This repository defines how an AI agent should **consume** that receipt.
+The Origin Trace Receipt Standard records these layers.
 
-The goal is not to let agents execute sensitive actions automatically.
+This repository answers the next question:
 
-The goal is to define a machine-readable handoff record that helps an agent decide:
+> What may an AI agent do after it consumes that receipt?
 
-1. Which receipt was received?
-2. Which layers are present or missing?
-3. Is the Human Review Gate passed, pending, blocked, or rejected?
-4. Which downstream actions are allowed?
-5. Which downstream actions are blocked?
-6. Which protocols may receive the receipt next?
-7. What should the agent record before stopping or handing off?
+Without a gate-aware handoff protocol, an agent might incorrectly treat a candidate downstream target as an executable route.
+
+This protocol prevents that by recording:
+
+- which receipt was consumed
+- which layers were detected
+- what the Human Review Gate allows or blocks
+- which downstream systems are candidate targets
+- which routes are authorized, conditional, or blocked
+- who should review blocked or conditional routes
+- which handoff receipts may be prepared or emitted
+- what non-bypassable autonomy boundary the agent must obey
+- what actions the agent may or must not perform
+
+---
 
 ## Core Concept
 
-An Agent Handoff Record answers seven questions:
+An Agent Handoff Record answers eleven questions:
 
 1. **Source Receipt** — Which Origin Trace Receipt is being consumed?
 2. **Agent Context** — Which agent is processing the receipt, and with what autonomy level?
 3. **Intake** — Which required layers were detected or missing?
 4. **Gate Check** — What does the Human Review Gate allow or block?
 5. **Routing** — Which downstream systems are candidates for handoff?
-6. **Action Policy** — What may the agent do, and what must it not do?
-7. **Handoff Result** — What did the agent emit, recommend, block, or defer?
+6. **Route Authorization** — Which candidate routes are authorized, conditional, or blocked?
+7. **Reviewer Notification** — Who should review blocked or conditional routes, and what safe payload should they receive?
+8. **Handoff Receipt Emission** — Which downstream handoff receipts may be prepared, emitted, deferred, or blocked?
+9. **Agent Boundary Seal** — What non-bypassable autonomy boundary must the agent obey?
+10. **Action Policy** — What may the agent do, and what must it not do?
+11. **Handoff Result** — What did the agent emit, recommend, block, defer, prepare, or seal?
+
+---
 
 ## Design Principles
 
+This protocol follows these principles:
+
 - Gate-aware by default
 - Human Review Gate first
-- Read-only and recommendation-first in v0.1
+- Recommendation before execution
+- Safe payloads before external handoff
+- Internal review before public action
 - No automatic payment execution
 - No automatic market registration
+- No automatic license publication
+- No automatic AI training approval
 - No automatic public origin claims
-- No bypassing receipt boundary conditions
-- Compatible with YAML and JSON
-- Machine-validatable by JSON Schema
+- No unredacted sensitive payload transmission
+- No Human Review Gate bypass
+- No route authorization override
+- No boundary self-modification
 
-## v0.1 Scope
+The protocol is intentionally conservative.
 
-v0.1 defines the **Receipt Intake & Gate Check Layer**.
+An AI agent may help prepare the path, but it must not seize authority from the human review layer.
 
-It allows an AI agent to:
+---
 
-- ingest an Origin Trace Receipt
-- identify available receipt layers
-- detect missing layers
-- inspect Human Review Gate status
-- classify allowed and blocked downstream actions
-- propose candidate routing targets
-- record a handoff result
+## Record Layers
 
-It does not allow the agent to execute sensitive downstream actions.
+### 1. Source Receipt
 
-## Sensitive Actions
+Identifies the Origin Trace Receipt being consumed.
 
-The protocol treats these as sensitive actions:
+It records:
 
-- market registration
-- license publication
-- commercial use approval
-- AI training use approval
-- royalty execution
-- external settlement
-- public origin claim
-- autonomous agent handoff
+- receipt ID
+- receipt schema version
+- receipt reference
+- receipt status
 
-If a Human Review Gate has not passed, these actions should be blocked or deferred.
+Example:
 
-## Repository Structure
+```yaml
+source_receipt:
+  receipt_id: otr_2026-07-03-human-review-gate-v0.5
+  receipt_schema_version: "0.5.0"
+  receipt_reference: "origin-trace-receipt-standard/examples/origin-trace-receipt.example.yaml"
+  receipt_status: draft
+```
 
-```text
-origin-trace-agent-handoff-protocol/
-├─ README.md
-├─ CHANGELOG.md
-├─ schemas/
-│  └─ agent-handoff-record.schema.json
-├─ examples/
-│  └─ agent-handoff-record.example.yaml
-├─ scripts/
-│  └─ validate_examples.py
-├─ requirements.txt
-└─ .github/
-   └─ workflows/
-      └─ validate.yml
+---
 
-Validation
+### 2. Agent Context
 
-Install dependencies:
+Describes the agent processing the receipt.
 
-pip install -r requirements.txt
+It records:
 
-Validate examples:
+- agent ID
+- agent type
+- agent role
+- autonomy level
 
-python scripts/validate_examples.py
+Supported autonomy levels include:
 
-Expected output:
+- read_only
+- recommendation_only
+- manual_approval_required
+- limited_execution
+- unknown
 
-[validate] Agent Handoff Record
-  schema : schemas/agent-handoff-record.schema.json
-  example: examples/agent-handoff-record.example.yaml
-[ok] agent-handoff-record.example.yaml is valid
-Version
+In the first arc, the recommended autonomy level is:
 
-Current candidate:
+```yaml
+autonomy_level: recommendation_only
+```
 
-v0.1.0-candidate
-Status
+---
 
-This repository begins as a downstream handoff protocol for AI agents.
+### 3. Intake
 
-v0.1 is intentionally conservative.
+Records whether the source receipt was successfully parsed and which layers were detected.
 
-The agent may inspect, classify, recommend, and record.
-The agent may not bypass Human Review Gate decisions or execute sensitive downstream actions automatically.
+Expected Origin Trace Receipt layers include:
 
-Non-Goals
+- origin
+- trace
+- transformation
+- evidence
+- transformation_diff
+- audit
+- royalty_hook
+- royalty_handoff
+- human_review_gate
+- boundary
+- handoff
+- validation
 
-This protocol does not:
+The intake layer is not a permission layer.  
+It only records whether the receipt was readable and complete enough for routing analysis.
 
-prove ownership
-determine infringement
-execute payment
-register assets automatically
-publish licenses automatically
-approve AI training use
-replace legal review
-replace human governance
-replace Origin Trace Receipt Standard
-License
+---
 
-Add a license according to the intended usage policy of the repository.
+### 4. Gate Check
 
-Recommended options:
+Reads the Human Review Gate state from the source receipt.
 
-MIT for open technical reuse
-Apache-2.0 for patent-aware technical reuse
-CC-BY-4.0 for documentation-focused reuse
-Custom attribution-required policy for origin-sensitive protocol work
+It records:
 
-### Route Authorization Layer
+- Human Review Gate status
+- decision status
+- blocking conditions
+- permitted actions
+- blocked actions
+- gate summary
+
+Sensitive actions should remain blocked unless the Human Review Gate and route authorization conditions are satisfied.
+
+Examples of blocked actions:
+
+- market_registration
+- license_publication
+- commercial_use
+- training_use
+- royalty_execution
+- external_settlement
+- public_origin_claim
+- agent_auto_handoff
+
+---
+
+### 5. Routing
+
+Identifies downstream candidate targets.
+
+Candidate targets may include:
+
+- synchronization-audit-protocol
+- origin-structure-market
+- origin-license-policy-registry
+- compute-access-royalty-os
+- royalty-os
+- multi-wing-orchestration-generator
+- external_registry
+- other
+
+Routing does not mean execution.
+
+A candidate target can be:
+
+- ready
+- manual_review_required
+- blocked
+- not_applicable
+
+---
+
+### 6. Route Authorization
 
 The Route Authorization Layer records which downstream routes an AI agent may use after inspecting an Origin Trace Receipt and its Human Review Gate.
 
@@ -193,10 +258,13 @@ The layer may define:
 - authorization conditions
 - authorization rationale
 
-In v0.2, route authorization is still conservative.  
+In v0.2 and later, route authorization remains conservative.
+
 The agent may recommend and record routes, but sensitive downstream actions remain blocked unless review conditions are satisfied.
 
-### Reviewer Notification Layer
+---
+
+### 7. Reviewer Notification
 
 The Reviewer Notification Layer records who should review a blocked, conditional, or sensitive route.
 
@@ -221,7 +289,275 @@ The layer may define:
 
 This layer is intentionally careful about payload safety.
 
-A reviewer notification should not automatically include private conversation excerpts, unredacted evidence, sensitive identity information, external settlement details, or unverified origin claims.
+A reviewer notification should not automatically include:
 
-In v0.3, the agent may prepare review notifications and request human review.  
+- private conversation excerpts
+- unredacted evidence
+- sensitive identity information
+- external settlement details
+- unverified origin claims
+- confidential repository URLs
+
+In v0.3 and later, the agent may prepare review notifications and request human review.
+
 It may not notify external systems with sensitive payloads unless the required review conditions are satisfied.
+
+---
+
+### 8. Handoff Receipt Emission
+
+The Handoff Receipt Emission Layer records which downstream handoff receipts an agent may prepare or emit.
+
+It prevents agent decisions from remaining only as internal reasoning.
+
+The layer may define:
+
+- emission ID
+- emission status
+- emission mode
+- emitted receipt IDs
+- emitted receipt type
+- target protocol
+- target purpose
+- related route
+- related review request
+- emission decision
+- payload scope
+- review dependency
+- emission policy
+- emission rationale
+
+This layer distinguishes between:
+
+- internal audit handoff
+- manual review handoff
+- royalty review handoff
+- license review handoff
+- market review handoff
+- blocked route receipt
+- archival receipt
+
+In v0.4 and later, the agent may prepare safe internal or review-oriented handoff receipts.
+
+The agent may not emit external handoff receipts, execution receipts, payment receipts, market registration receipts, or license publication receipts unless the required Human Review Gate and route authorization conditions are satisfied.
+
+---
+
+### 9. Agent Boundary Seal
+
+The Agent Boundary Seal records the non-bypassable autonomy boundary for an AI agent handling Origin Trace Receipts.
+
+It defines what the agent must never do, even when it can parse receipts, authorize routes, prepare reviewer notifications, or emit internal handoff receipts.
+
+The layer may define:
+
+- seal ID
+- seal status
+- autonomy ceiling
+- sealed boundary rules
+- non-bypassable actions
+- escalation policy
+- violation response
+- seal summary
+
+This layer is designed to prevent:
+
+- payment execution
+- market registration
+- license publication
+- AI training approval
+- public origin claims
+- external settlement
+- external handoff emission
+- unredacted payload transmission
+- Human Review Gate override
+- route authorization override
+- boundary seal modification
+
+In v0.5, the agent may read, validate, recommend, prepare safe payloads, emit internal review-oriented handoff receipts, record boundary seals, and escalate violations.
+
+The agent may not execute sensitive actions, emit external execution receipts, bypass review gates, override route authorization, or modify its own boundary.
+
+---
+
+### 10. Action Policy
+
+The Action Policy records what the agent may and may not do.
+
+Allowed actions may include:
+
+- read_receipt
+- validate_receipt
+- summarize_receipt
+- classify_gate_status
+- recommend_targets
+- emit_handoff_record
+- notify_human_reviewer
+- create_review_notification
+- prepare_safe_payload
+- request_human_review
+- create_handoff_receipt
+- prepare_downstream_receipt
+- emit_internal_handoff_receipt
+- record_boundary_seal
+- check_boundary_seal
+- escalate_boundary_violation
+
+Prohibited actions may include:
+
+- execute_payment
+- register_market_asset
+- publish_license
+- approve_training_use
+- make_public_origin_claim
+- bypass_human_review_gate
+- auto_forward_to_external_system
+- send_unredacted_private_evidence
+- notify_external_system_without_review
+- emit_external_handoff_without_review
+- emit_receipt_with_unredacted_payload
+- modify_boundary_seal
+- override_route_authorization
+- override_human_review_gate
+- emit_external_execution_receipt
+
+---
+
+### 11. Handoff Result
+
+Records what the agent produced.
+
+A result may be:
+
+- recorded
+- recommended
+- deferred
+- blocked
+- failed
+
+The result may include emitted record IDs such as:
+
+- the agent handoff record itself
+- internal audit handoff receipt
+- royalty review receipt
+- blocked route receipt
+- boundary seal record
+
+---
+
+## First Arc
+
+The first protocol arc is complete at v0.5.
+
+```text
+v0.1 = Receipt Intake & Gate Check
+v0.2 = Route Authorization
+v0.3 = Reviewer Notification
+v0.4 = Handoff Receipt Emission
+v0.5 = Agent Boundary Seal
+```
+
+This arc defines the minimum safe route from receipt consumption to boundary sealing.
+
+---
+
+## Repository Structure
+
+```text
+origin-trace-agent-handoff-protocol/
+├─ README.md
+├─ CHANGELOG.md
+├─ schemas/
+│  └─ agent-handoff-record.schema.json
+├─ examples/
+│  └─ agent-handoff-record.example.yaml
+├─ scripts/
+│  └─ validate_examples.py
+├─ requirements.txt
+└─ .github/
+   └─ workflows/
+      └─ validate.yml
+```
+
+---
+
+## Validation
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Validate examples:
+
+```bash
+python scripts/validate_examples.py
+```
+
+Expected output:
+
+```text
+[validate] Agent Handoff Record
+  schema : schemas/agent-handoff-record.schema.json
+  example: examples/agent-handoff-record.example.yaml
+[ok] agent-handoff-record.example.yaml is valid
+```
+
+---
+
+## Version
+
+Current candidate:
+
+```text
+v0.5.0-candidate
+```
+
+Release title:
+
+```text
+v0.5.0-candidate — Agent Boundary Seal
+```
+
+---
+
+## Non-Goals
+
+This protocol does not:
+
+- determine legal ownership
+- execute royalty payments
+- register assets in a market
+- publish licenses
+- approve AI training use
+- make public origin claims
+- settle disputes
+- replace human legal review
+- bypass human governance
+- authorize external execution
+- allow agents to modify their own boundaries
+
+It records the agent handoff state so that humans and downstream systems can review it safely.
+
+---
+
+## Status
+
+This repository is a candidate standard.
+
+The v0.5 first arc is intended to be stable enough for:
+
+- GitHub validation workflows
+- protocol experiments
+- AI agent routing tests
+- audit pipeline prototypes
+- royalty review handoff prototypes
+- Origin Trace Receipt integration
+- Multi-Wing orchestration integration
+
+---
+
+## License
+
+License to be defined by the repository maintainer.
