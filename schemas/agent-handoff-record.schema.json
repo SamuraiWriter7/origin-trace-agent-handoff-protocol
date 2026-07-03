@@ -1,0 +1,485 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/agent-handoff-record.schema.json",
+  "title": "Agent Handoff Record",
+  "description": "A gate-aware handoff record for AI agents consuming Origin Trace Receipts.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "record_type",
+    "handoff_id",
+    "created_at",
+    "source_receipt",
+    "agent_context",
+    "intake",
+    "gate_check",
+    "routing",
+    "action_policy",
+    "handoff_result"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "record_type": {
+      "type": "string",
+      "const": "origin_trace_agent_handoff"
+    },
+    "handoff_id": {
+      "type": "string",
+      "pattern": "^agent_handoff_[A-Za-z0-9._-]+$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_receipt": {
+      "type": "object",
+      "required": [
+        "receipt_id",
+        "receipt_schema_version",
+        "receipt_reference",
+        "receipt_status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "pattern": "^otr_[A-Za-z0-9._-]+$"
+        },
+        "receipt_schema_version": {
+          "type": "string"
+        },
+        "receipt_reference": {
+          "type": "string"
+        },
+        "receipt_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "validated",
+            "rejected",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "agent_context": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "agent_type",
+        "agent_role",
+        "autonomy_level"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "pattern": "^agent_[A-Za-z0-9._-]+$"
+        },
+        "agent_type": {
+          "type": "string",
+          "enum": [
+            "audit_agent",
+            "routing_agent",
+            "market_agent",
+            "royalty_agent",
+            "license_agent",
+            "orchestration_agent",
+            "human_assistant_agent",
+            "other"
+          ]
+        },
+        "agent_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "autonomy_level": {
+          "type": "string",
+          "enum": [
+            "read_only",
+            "recommendation_only",
+            "manual_approval_required",
+            "limited_execution",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "intake": {
+      "type": "object",
+      "required": [
+        "intake_id",
+        "intake_status",
+        "receipt_layers_detected",
+        "missing_layers",
+        "intake_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "intake_id": {
+          "type": "string",
+          "pattern": "^intake_[A-Za-z0-9._-]+$"
+        },
+        "intake_status": {
+          "type": "string",
+          "enum": [
+            "received",
+            "parsed",
+            "partial",
+            "failed"
+          ]
+        },
+        "receipt_layers_detected": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "origin",
+              "trace",
+              "transformation",
+              "evidence",
+              "transformation_diff",
+              "audit",
+              "royalty_hook",
+              "royalty_handoff",
+              "human_review_gate",
+              "boundary",
+              "handoff",
+              "validation"
+            ]
+          }
+        },
+        "missing_layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intake_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "gate_check": {
+      "type": "object",
+      "required": [
+        "gate_check_id",
+        "human_review_gate_status",
+        "decision_status",
+        "blocking_conditions_detected",
+        "permitted_actions",
+        "blocked_actions",
+        "gate_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "gate_check_id": {
+          "type": "string",
+          "pattern": "^gate_check_[A-Za-z0-9._-]+$"
+        },
+        "human_review_gate_status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "required",
+            "pending",
+            "passed",
+            "rejected",
+            "blocked",
+            "unknown"
+          ]
+        },
+        "decision_status": {
+          "type": "string",
+          "enum": [
+            "not_started",
+            "pending",
+            "approved",
+            "approved_with_conditions",
+            "rejected",
+            "blocked",
+            "unknown"
+          ]
+        },
+        "blocking_conditions_detected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "condition_id",
+              "condition_type",
+              "severity",
+              "blocks_actions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "condition_id": {
+                "type": "string"
+              },
+              "condition_type": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ]
+              },
+              "blocks_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "permitted_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "archive_only",
+              "internal_use",
+              "attribution_publication",
+              "license_publication",
+              "market_registration",
+              "royalty_handoff",
+              "external_settlement",
+              "agent_auto_handoff",
+              "other"
+            ]
+          }
+        },
+        "blocked_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "market_registration",
+              "license_publication",
+              "commercial_use",
+              "training_use",
+              "royalty_execution",
+              "external_settlement",
+              "public_origin_claim",
+              "agent_auto_handoff",
+              "other"
+            ]
+          }
+        },
+        "gate_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "routing": {
+      "type": "object",
+      "required": [
+        "routing_id",
+        "routing_status",
+        "candidate_targets",
+        "selected_targets",
+        "routing_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "routing_id": {
+          "type": "string",
+          "pattern": "^routing_[A-Za-z0-9._-]+$"
+        },
+        "routing_status": {
+          "type": "string",
+          "enum": [
+            "not_started",
+            "candidate_only",
+            "ready_for_manual_review",
+            "blocked",
+            "completed"
+          ]
+        },
+        "candidate_targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "target_id",
+              "target_protocol",
+              "target_purpose",
+              "routing_readiness"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "pattern": "^target_[A-Za-z0-9._-]+$"
+              },
+              "target_protocol": {
+                "type": "string",
+                "enum": [
+                  "synchronization-audit-protocol",
+                  "origin-structure-market",
+                  "origin-license-policy-registry",
+                  "compute-access-royalty-os",
+                  "royalty-os",
+                  "multi-wing-orchestration-generator",
+                  "external_registry",
+                  "other"
+                ]
+              },
+              "target_purpose": {
+                "type": "string",
+                "enum": [
+                  "audit",
+                  "licensing",
+                  "market_registration",
+                  "royalty_review",
+                  "archival",
+                  "orchestration",
+                  "other"
+                ]
+              },
+              "routing_readiness": {
+                "type": "string",
+                "enum": [
+                  "ready",
+                  "manual_review_required",
+                  "blocked",
+                  "not_applicable"
+                ]
+              },
+              "routing_notes": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "selected_targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^target_[A-Za-z0-9._-]+$"
+          }
+        },
+        "routing_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "action_policy": {
+      "type": "object",
+      "required": [
+        "execution_mode",
+        "allowed_agent_actions",
+        "prohibited_agent_actions",
+        "policy_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "execution_mode": {
+          "type": "string",
+          "enum": [
+            "record_only",
+            "recommendation_only",
+            "manual_approval_required",
+            "agent_execution_allowed"
+          ]
+        },
+        "allowed_agent_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "read_receipt",
+              "validate_receipt",
+              "summarize_receipt",
+              "classify_gate_status",
+              "recommend_targets",
+              "emit_handoff_record",
+              "notify_human_reviewer",
+              "other"
+            ]
+          }
+        },
+        "prohibited_agent_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "execute_payment",
+              "register_market_asset",
+              "publish_license",
+              "approve_training_use",
+              "make_public_origin_claim",
+              "bypass_human_review_gate",
+              "auto_forward_to_external_system",
+              "other"
+            ]
+          }
+        },
+        "policy_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "handoff_result": {
+      "type": "object",
+      "required": [
+        "result_status",
+        "emitted_records",
+        "result_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "result_status": {
+          "type": "string",
+          "enum": [
+            "recorded",
+            "recommended",
+            "deferred",
+            "blocked",
+            "failed"
+          ]
+        },
+        "emitted_records": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "result_summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "validation_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "validated",
+            "rejected"
+          ]
+        },
+        "record_hash": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
